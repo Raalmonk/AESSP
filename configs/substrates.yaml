@@ -1,0 +1,5 @@
+substrates:
+  sucrose:
+    smiles: ""
+    source_note: "Not configured. Add a manually verified sucrose SMILES from a trusted chemistry source before CatPred submission."
+    reaction_note: "GH70 dextransucrase/glucansucrase kinetic-prior preparation against sucrose; no CatPred result is implied."

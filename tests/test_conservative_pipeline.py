@@ -132,6 +132,48 @@ def test_unmatched_protein_goes_to_enzyme_table_not_strain_table():
     assert not bool(enzyme_candidates.iloc[0]["literature_linked"])
 
 
+def test_species_level_protein_not_attached_to_strain_candidate():
+    literature = pd.DataFrame(
+        [
+            {
+                "source_record_id": "lit1",
+                "pmid": "123",
+                "doi": "",
+                "abstract": "Leuconostoc mesenteroides NRRL B-512F produced dextran.",
+            }
+        ]
+    )
+    mentions = pd.DataFrame(
+        [
+            {
+                "record_id": "lit1",
+                "species_mentioned": "Leuconostoc mesenteroides",
+                "strain_mentioned": "NRRL B-512F",
+                "enzyme_terms": "dextransucrase",
+                "product_terms": "dextran",
+                "confidence": 0.9,
+                "needs_manual_review": True,
+            }
+        ]
+    )
+    proteins = pd.DataFrame(
+        [
+            {
+                "query": "dextransucrase",
+                "accession": "ABC123.1",
+                "protein_name": "dextransucrase",
+                "organism": "Leuconostoc mesenteroides",
+            }
+        ]
+    )
+
+    strain_candidates, enzyme_candidates = build_candidate_table(literature, proteins, mentions)
+
+    assert len(strain_candidates) == 1
+    assert strain_candidates.iloc[0]["protein_accession"] == ""
+    assert len(enzyme_candidates) == 1
+
+
 def test_unknown_availability_score_is_conservative():
     candidates = pd.DataFrame(
         [

@@ -7,6 +7,7 @@ import re
 import pandas as pd
 
 from aessp.io import ensure_parent
+from aessp.validation.catpred import READY_LINK_CONFIDENCE
 
 
 COMPONENT_COLUMNS = [
@@ -175,15 +176,47 @@ def _component_scores(row: Mapping[str, object]) -> dict[str, float]:
     }
 
 
-def score_candidates(dataframe: pd.DataFrame, weights_config: Mapping[str, object]) -> pd.DataFrame:
+def _catpred_index(catpred_scores: pd.DataFrame | None) -> tuple[dict[str, dict[str, object]], set[str]]:
+    if catpred_scores is None or catpred_scores.empty:
+        return {}, set()
+
+    valid: dict[str, dict[str, object]] = {}
+    blocked_candidates: set[str] = set()
+    for _, row in catpred_scores.fillna("").iterrows():
+        record = row.to_dict()
+        candidate_id = str(record.get("candidate_id", "")).strip()
+        if not candidate_id:
+            continue
+        link_confidence = str(record.get("accession_link_confidence", "")).strip()
+        if link_confidence not in READY_LINK_CONFIDENCE:
+            blocked_candidates.add(candidate_id)
+            continue
+        if not _as_bool(record.get("catpred_result_available", "")):
+            continue
+        score = _as_float(record.get("catpred_overall_score", ""), default=-1.0)
+        if score < 0:
+            continue
+        current = valid.get(candidate_id)
+        if current is None or score > float(current.get("catpred_overall_score", -1.0)):
+            valid[candidate_id] = record
+    return valid, blocked_candidates
+
+
+def score_candidates(
+    dataframe: pd.DataFrame,
+    weights_config: Mapping[str, object],
+    catpred_scores: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     weights = dict(weights_config.get("weights", {}) if isinstance(weights_config, Mapping) else {})
     uncertainty = dict(weights_config.get("uncertainty", {}) if isinstance(weights_config, Mapping) else {})
     missing_value_penalty = float(uncertainty.get("missing_value_penalty", 0.10))
     review_penalty_enabled = bool(uncertainty.get("auto_extracted_numeric_requires_review", True))
+    catpred_by_candidate, catpred_blocked_candidates = _catpred_index(catpred_scores)
 
     rows: list[dict[str, object]] = []
     for _, row in dataframe.fillna("").iterrows():
         output = row.to_dict()
+        candidate_id = str(output.get("candidate_id", "")).strip()
         components = _component_scores(output)
         missing_columns = [
             "reported_Mw",
@@ -204,12 +237,32 @@ def score_candidates(dataframe: pd.DataFrame, weights_config: Mapping[str, objec
         )
         output.update(components)
         output["uncertainty_penalty"] = round(uncertainty_penalty, 4)
-        output["total_score"] = round(_clamp(weighted_total - uncertainty_penalty), 4)
+        evidence_priority_score = round(_clamp(weighted_total - uncertainty_penalty), 4)
+        catpred_record = catpred_by_candidate.get(candidate_id)
+        output["catpred_kinetic_score"] = ""
+        output["catpred_result_available"] = False
+        output["catpred_validation_level"] = "not_yet_validated"
+        if catpred_record is not None:
+            catpred_score = _clamp(_as_float(catpred_record.get("catpred_overall_score", 0.0)))
+            output["catpred_kinetic_score"] = round(catpred_score, 4)
+            output["catpred_result_available"] = True
+            output["catpred_validation_level"] = "catpred_validated"
+            production_priority_score = round(_clamp((0.75 * evidence_priority_score) + (0.25 * catpred_score)), 4)
+        else:
+            if candidate_id in catpred_blocked_candidates:
+                output["catpred_validation_level"] = "blocked_link_confidence"
+            production_priority_score = evidence_priority_score
+        output["evidence_priority_score"] = evidence_priority_score
+        output["catpred_validated_score"] = output["catpred_kinetic_score"]
+        output["production_priority_score"] = production_priority_score
+        output["total_score"] = production_priority_score
         notes: list[str] = []
         if _as_bool(output.get("needs_manual_review", "")):
             notes.append("manual review required for automatically extracted evidence")
         if not _pilot_ready(output):
             notes.append("not pilot-ready without manual verification")
+        if not output["catpred_result_available"]:
+            notes.append("CatPred result not yet validated")
         if missing_fraction:
             notes.append("missing values reduced score")
         output["score_notes"] = "; ".join(notes)

@@ -38,6 +38,7 @@ Build extracted evidence, candidates, and scores:
 ```bash
 python scripts/extract_candidate_mentions.py
 python scripts/build_candidate_table.py
+python scripts/validate_enzyme_candidates.py
 python scripts/score_candidates.py
 python scripts/audit_first_batch.py
 ```
@@ -59,6 +60,50 @@ structured verification.
 only when at least 8 candidates have `manual_verified=True` or `pilot_ready=True`;
 otherwise it writes `top8_pilot_screening_NOT_READY.md`.
 
+## CatPred Validation Layer
+
+`top20_manual_review.csv` is an evidence inbox. It is not a biological
+recommendation. Before using CatPred-style kinetic priors, validate enzyme
+accessions and prepare private inputs:
+
+```bash
+python scripts/validate_enzyme_candidates.py \
+  --candidates-csv data/processed/dextran_candidate_table.csv \
+  --protein-csv data/processed/protein_records.csv \
+  --out-csv data/processed/enzyme_validation_table.csv \
+  --allow-fasta-export
+
+python scripts/export_catpred_fasta.py \
+  --validation-csv data/processed/enzyme_validation_table.csv \
+  --email USER_EMAIL \
+  --out-fasta data/private/catpred/catpred_input.fasta \
+  --out-manifest data/private/catpred/catpred_input_manifest.csv \
+  --only-catpred-ready
+
+python scripts/prepare_catpred_inputs.py \
+  --validation-csv data/processed/enzyme_validation_table.csv \
+  --manifest-csv data/private/catpred/catpred_input_manifest.csv \
+  --out-csv data/private/catpred/catpred_input_table.csv
+```
+
+CatPred results are only used after actual output is ingested:
+
+```bash
+python scripts/ingest_catpred_results.py \
+  --catpred-output data/private/catpred/catpred_output.csv \
+  --validation-csv data/processed/enzyme_validation_table.csv \
+  --out-csv data/processed/enzyme_catpred_scores.csv
+
+python scripts/score_candidates.py \
+  --catpred-scores data/processed/enzyme_catpred_scores.csv
+
+python scripts/report_catpred_validation.py
+```
+
+`configs/substrates.yaml` intentionally leaves sucrose SMILES empty until a
+trusted source is manually configured. CatPred preparation rows with missing
+substrate definition are marked `needs_substrate_definition`.
+
 ## API Compliance
 
 - Uses NCBI E-utilities and Crossref REST APIs rather than scraping pages.
@@ -73,6 +118,8 @@ otherwise it writes `top8_pilot_screening_NOT_READY.md`.
 - The extraction layer is rule-based and conservative.
 - Numeric evidence from titles or abstracts is always marked `needs_manual_review=True`.
 - Mention-only evidence is intentionally scored conservatively and cannot produce pilot-ready recommendations by itself.
+- CatPred-ready means technically ready for expert-tool input preparation; it is not manual biological verification.
+- Missing CatPred output is marked as not yet validated and is not treated as a result.
 - Full protein sequences are not written to reports.
 - NCBI Protein does not provide UniProt-style reviewed status, so that field is marked unavailable for NCBI records.
 - Scores are prioritization aids for manual review and pilot screening, not final strain or process recommendations.

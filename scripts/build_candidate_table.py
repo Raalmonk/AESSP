@@ -201,6 +201,17 @@ def _has_relevant_enzyme_text(*values: object) -> bool:
     return any(term in text for term in RELEVANT_ENZYME_TERMS)
 
 
+def _match_text(value: object) -> str:
+    return " ".join(str(value or "").lower().replace("-", " ").split())
+
+
+def _strain_token(value: object) -> str:
+    text = _match_text(value)
+    if text.startswith("strain "):
+        text = text.split(" ", 1)[1]
+    return text
+
+
 def _can_create_strain_candidate(mention: dict[str, object]) -> bool:
     if not _split_values(mention.get("species_mentioned", "")):
         return False
@@ -254,7 +265,19 @@ def _matches_protein(candidate: dict[str, object], protein: dict[str, object]) -
     enzyme = str(candidate.get("enzyme_name", "")).lower()
     protein_name = str(protein.get("protein_name", "")).lower()
     query = str(protein.get("query", "")).lower()
-    return _has_relevant_enzyme_text(enzyme, protein_name, query)
+    if not _has_relevant_enzyme_text(enzyme, protein_name, query):
+        return False
+
+    strain = _strain_token(candidate.get("strain", ""))
+    if strain:
+        protein_text = _match_text(
+            " ".join(
+                str(protein.get(field, ""))
+                for field in ("organism", "protein_name", "gene_name", "source_url", "accession")
+            )
+        )
+        return strain in protein_text
+    return True
 
 
 def _add_protein(candidate: dict[str, object], protein: dict[str, object]) -> None:

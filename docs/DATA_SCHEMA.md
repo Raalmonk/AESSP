@@ -128,6 +128,78 @@ Columns:
 - `manual_relevant`
 - `needs_manual_review`
 
+## `enzyme_validation_table.csv`
+
+Pre-CatPred enzyme validation table. This table verifies whether a candidate
+accession is technically ready for CatPred input preparation. It does not imply
+that CatPred has been run.
+
+Columns:
+
+- `enzyme_validation_id`
+- `candidate_id`
+- `genus`
+- `species`
+- `strain`
+- `organism_label`
+- `enzyme_name_from_candidate`
+- `protein_accession`
+- `protein_name`
+- `protein_organism`
+- `taxonomy_id`
+- `sequence_length`
+- `sequence_hash`
+- `source_url`
+- `enzyme_class`
+- `product_class_hint`
+- `accession_link_confidence`
+- `catpred_ready`
+- `catpred_block_reason`
+- `needs_manual_review`
+- `manual_verified`
+- `notes`
+
+## CatPred preparation and result tables
+
+Private CatPred inputs should live under `data/private/catpred/`.
+Do not commit full FASTA sequences or private CatPred input files by default.
+
+`catpred_input_manifest.csv` contains:
+
+- `protein_accession`
+- `enzyme_validation_id`
+- `candidate_id`
+- `organism_label`
+- `enzyme_class`
+- `sequence_length`
+- `sequence_hash`
+- `source_url`
+- `catpred_ready`
+- `needs_manual_review`
+
+`catpred_input_table.csv` contains:
+
+- `protein_accession`
+- `enzyme_validation_id`
+- `sequence_id`
+- `substrate_name`
+- `substrate_smiles`
+- `reaction_note`
+- `enzyme_class`
+- `candidate_id`
+- `organism_label`
+- `catpred_input_status`
+
+`enzyme_catpred_scores.csv` is created only after actual CatPred output is
+ingested. It includes CatPred predictions and derived conservative score fields:
+
+- `catpred_kcat_score`
+- `catpred_Km_score`
+- `catpred_efficiency_score`
+- `catpred_overall_score`
+- `catpred_result_available`
+- `catpred_validation_level`
+
 ## `dextran_candidate_scores.csv`
 
 Scored candidate table.
@@ -143,6 +215,12 @@ Columns:
 - `availability_score`
 - `safety_score`
 - `processability_score`
+- `catpred_kinetic_score`
+- `catpred_result_available`
+- `catpred_validation_level`
+- `evidence_priority_score`
+- `catpred_validated_score`
+- `production_priority_score`
 - `uncertainty_penalty`
 - `total_score`
 - `score_notes`

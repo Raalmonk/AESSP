@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aessp"
+version = "0.1.0"
+description = "API-first evidence pipeline for dextran strain and enzyme scouting."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "requests",
+  "pandas",
+  "pyyaml",
+  "tqdm",
+  "biopython",
+  "pytest",
+  "responses",
+]
+
+[tool.setuptools.packages.find]
+include = ["aessp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,1 @@
+"""Transparent candidate scoring helpers."""

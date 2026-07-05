@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# AESSP data products
+# Raw API dumps and manually curated private tables can be large or licensing-sensitive.
+data/raw/
+data/cache/
+data/private/
+
+# Keep processed/reports tracked only when intentionally exported.
+# Remove the next two lines if you decide to version small processed snapshots.
+data/processed/*.csv
+data/reports/*.csv
+
+# Protein sequences and raw FASTA exports should be reviewed before sharing.
+*.fasta
+*.fa
+*.faa
+
+# OS/editor
+.DS_Store
+.vscode/

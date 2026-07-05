@@ -1,0 +1,17 @@
+weights:
+  literature_confidence_score: 0.20
+  product_structure_score: 0.20
+  target_mw_score: 0.15
+  branching_evidence_score: 0.15
+  enzyme_sequence_score: 0.10
+  availability_score: 0.10
+  safety_score: 0.05
+  processability_score: 0.05
+
+uncertainty:
+  missing_value_penalty: 0.10
+  auto_extracted_numeric_requires_review: true
+
+notes:
+  - "Scores are prioritization aids, not biological conclusions."
+  - "Manually confirm reported yield, Mw, branching, and availability before pilot screening."

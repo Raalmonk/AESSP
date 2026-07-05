@@ -64,7 +64,8 @@ Columns:
 
 ## `dextran_candidate_table.csv`
 
-Merged strain/enzyme candidate table.
+Merged strain candidate table. Automatic title/abstract extraction is stored
+as evidence text and must not be treated as a verified reported value.
 
 Columns:
 
@@ -79,6 +80,11 @@ Columns:
 - `culture_accession`
 - `available_in_china`
 - `availability_status`
+- `mw_evidence_text`
+- `branching_evidence_text`
+- `viscosity_evidence_text`
+- `yield_evidence_text`
+- `nmr_evidence_text`
 - `reported_yield`
 - `reported_Mw`
 - `reported_PDI`
@@ -92,6 +98,34 @@ Columns:
 - `source_pmids`
 - `source_dois`
 - `evidence_confidence`
+- `evidence_level`
+- `structure_evidence_level`
+- `enzyme_evidence_level`
+- `availability_evidence_level`
+- `manual_verified`
+- `pilot_ready`
+- `needs_manual_review`
+
+## `enzyme_candidate_table.csv`
+
+Protein-accession candidates that are not automatically promoted to strain
+candidates unless linked to literature/manual strain evidence.
+
+Columns:
+
+- `enzyme_candidate_id`
+- `accession`
+- `protein_name`
+- `gene_name`
+- `organism`
+- `taxonomy_id`
+- `sequence_length`
+- `sequence_hash`
+- `ec_number`
+- `source_url`
+- `query`
+- `literature_linked`
+- `manual_relevant`
 - `needs_manual_review`
 
 ## `dextran_candidate_scores.csv`

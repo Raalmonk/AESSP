@@ -39,9 +39,25 @@ Build extracted evidence, candidates, and scores:
 python scripts/extract_candidate_mentions.py
 python scripts/build_candidate_table.py
 python scripts/score_candidates.py
+python scripts/audit_first_batch.py
 ```
 
 Primary outputs are written under `data/processed/` and `data/reports/`.
+
+`build_candidate_table.py` now writes two layers:
+
+- `data/processed/dextran_candidate_table.csv` for strain candidates with literature product evidence.
+- `data/processed/enzyme_candidate_table.csv` for protein/accession candidates that still need literature or manual linkage.
+
+Automatic title/abstract extraction fills `mw_evidence_text`, `branching_evidence_text`,
+`viscosity_evidence_text`, `yield_evidence_text`, and `nmr_evidence_text`.
+It does not fill `reported_*` fields. Those are reserved for manual or otherwise
+structured verification.
+
+`score_candidates.py` always writes `dextran_candidate_scores.csv` and
+`top20_manual_review.csv`. It writes real Top 8 pilot-screening recommendations
+only when at least 8 candidates have `manual_verified=True` or `pilot_ready=True`;
+otherwise it writes `top8_pilot_screening_NOT_READY.md`.
 
 ## API Compliance
 
@@ -56,6 +72,7 @@ Primary outputs are written under `data/processed/` and `data/reports/`.
 
 - The extraction layer is rule-based and conservative.
 - Numeric evidence from titles or abstracts is always marked `needs_manual_review=True`.
+- Mention-only evidence is intentionally scored conservatively and cannot produce pilot-ready recommendations by itself.
 - Full protein sequences are not written to reports.
 - NCBI Protein does not provide UniProt-style reviewed status, so that field is marked unavailable for NCBI records.
 - Scores are prioritization aids for manual review and pilot screening, not final strain or process recommendations.

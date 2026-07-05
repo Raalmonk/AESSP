@@ -18,6 +18,27 @@ STRAIN_PATTERNS = [
     ),
     re.compile(r"\bstrain\s+[A-Za-z0-9][A-Za-z0-9._/-]{1,24}\b", re.IGNORECASE),
 ]
+STRAIN_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "by",
+    "consisted",
+    "for",
+    "from",
+    "has",
+    "in",
+    "is",
+    "of",
+    "that",
+    "the",
+    "this",
+    "was",
+    "were",
+    "with",
+}
 NUMBER_RE = re.compile(
     r"\b\d+(?:[.,]\d+)?(?:\s*(?:x|×)\s*10\^?-?\d+)?\b|\b10\^?-?\d+\b",
     re.IGNORECASE,
@@ -131,7 +152,13 @@ def _species_mentions(text: str) -> list[str]:
 def _strain_mentions(text: str) -> list[str]:
     matches: list[str] = []
     for pattern in STRAIN_PATTERNS:
-        matches.extend(match.group(0) for match in pattern.finditer(text))
+        for match in pattern.finditer(text):
+            value = match.group(0)
+            if value.lower().startswith("strain "):
+                token = value.split(maxsplit=1)[1].strip(".,;:()[]{}").lower()
+                if token in STRAIN_STOPWORDS:
+                    continue
+            matches.append(value)
     return _unique(matches)
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Mapping
+import re
 
 import pandas as pd
 
@@ -49,14 +50,30 @@ def _clamp(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
+def _has_numeric(value: object) -> bool:
+    return bool(re.search(r"\d", str(value or "")))
+
+
+def _manual_verified(row: Mapping[str, object]) -> bool:
+    return _as_bool(row.get("manual_verified", ""))
+
+
+def _pilot_ready(row: Mapping[str, object]) -> bool:
+    return _as_bool(row.get("pilot_ready", "")) or _manual_verified(row)
+
+
 def _availability_score(row: Mapping[str, object]) -> float:
     if _as_bool(row.get("available_in_china", "")):
         return 1.0
     status = str(row.get("availability_status", "")).lower()
-    if "available" in status and "unavailable" not in status:
-        return 0.8
+    if "confirmed" in status and "china" in status and "unavailable" not in status:
+        return 1.0
+    if "outside china" in status and "available" in status and "unavailable" not in status:
+        return 0.7
+    if status in {"manual_review_needed", "manual review needed"}:
+        return 0.1
     if "pending" in status or "manual" in status:
-        return 0.3
+        return 0.1
     return 0.0
 
 
@@ -66,8 +83,74 @@ def _safety_score(row: Mapping[str, object]) -> float:
         return 0.0
     if any(term in notes for term in ("pathogen", "toxin", "hazard", "risk")):
         return 0.0
-    if any(term in notes for term in ("gras", "food", "starter", "low concern")):
+    low_concern = any(term in notes for term in ("gras", "food", "starter", "industrial", "low concern"))
+    if low_concern and _manual_verified(row):
         return 1.0
+    if low_concern:
+        return 0.5
+    return 0.0
+
+
+def _product_structure_score(row: Mapping[str, object]) -> float:
+    if _manual_verified(row) and any(
+        _has_value(row.get(column, ""))
+        for column in ("reported_branching", "reported_alpha_1_6", "reported_alpha_1_3")
+    ):
+        return 1.0
+    if any(_has_numeric(row.get(column, "")) for column in ("reported_branching", "reported_alpha_1_6", "reported_alpha_1_3")):
+        return 0.7
+
+    evidence = " ".join(
+        str(row.get(column, "") or "")
+        for column in ("branching_evidence_text", "nmr_evidence_text")
+    ).lower()
+    if not evidence.strip():
+        return 0.0
+    if "nmr" in evidence or "linkage" in evidence or "1,6" in evidence or "1,3" in evidence:
+        return 0.4
+    return 0.2
+
+
+def _target_mw_score(row: Mapping[str, object]) -> float:
+    if _manual_verified(row) and _has_value(row.get("reported_Mw", "")):
+        return 1.0
+    if _has_numeric(row.get("reported_Mw", "")):
+        return 0.7
+    if _has_value(row.get("mw_evidence_text", "")):
+        return 0.2
+    return 0.0
+
+
+def _branching_evidence_score(row: Mapping[str, object]) -> float:
+    if _manual_verified(row) and any(
+        _has_value(row.get(column, ""))
+        for column in ("reported_branching", "reported_alpha_1_6", "reported_alpha_1_3")
+    ):
+        return 1.0
+    if any(_has_numeric(row.get(column, "")) for column in ("reported_branching", "reported_alpha_1_6", "reported_alpha_1_3")):
+        return 0.7
+
+    evidence = " ".join(
+        str(row.get(column, "") or "")
+        for column in ("branching_evidence_text", "nmr_evidence_text")
+    ).lower()
+    if not evidence.strip():
+        return 0.0
+    if "nmr" in evidence or "linkage" in evidence or "1,6" in evidence or "1,3" in evidence:
+        return 0.3
+    return 0.2
+
+
+def _enzyme_sequence_score(row: Mapping[str, object]) -> float:
+    if _manual_verified(row) and _has_value(row.get("protein_accession", "")):
+        return 1.0
+    if not (
+        _as_bool(row.get("protein_sequence_available", ""))
+        or _has_value(row.get("protein_accession", ""))
+    ):
+        return 0.0
+    if _as_float(row.get("literature_evidence_count", 0.0)) > 0:
+        return 0.8
     return 0.5
 
 
@@ -76,26 +159,19 @@ def _component_scores(row: Mapping[str, object]) -> dict[str, float]:
     if evidence_confidence == 0.0 and _as_float(row.get("literature_evidence_count", 0.0)) > 0:
         evidence_confidence = _clamp(_as_float(row.get("literature_evidence_count", 0.0)) / 3.0)
 
-    has_branching = any(
+    has_process = any(
         _has_value(row.get(column, ""))
-        for column in ("reported_branching", "reported_alpha_1_6", "reported_alpha_1_3")
-    )
-    has_mw = _has_value(row.get("reported_Mw", ""))
-    has_sequence = _as_bool(row.get("protein_sequence_available", "")) or _has_value(
-        row.get("protein_accession", "")
-    )
-    has_process = _has_value(row.get("reported_viscosity", "")) or _has_value(
-        row.get("reported_yield", "")
+        for column in ("reported_viscosity", "reported_yield", "viscosity_evidence_text", "yield_evidence_text")
     )
     return {
         "literature_confidence_score": evidence_confidence,
-        "product_structure_score": 1.0 if has_branching else (0.5 if has_mw else 0.0),
-        "target_mw_score": 1.0 if has_mw else 0.0,
-        "branching_evidence_score": 1.0 if has_branching else 0.0,
-        "enzyme_sequence_score": 1.0 if has_sequence else 0.0,
+        "product_structure_score": _product_structure_score(row),
+        "target_mw_score": _target_mw_score(row),
+        "branching_evidence_score": _branching_evidence_score(row),
+        "enzyme_sequence_score": _enzyme_sequence_score(row),
         "availability_score": _availability_score(row),
         "safety_score": _safety_score(row),
-        "processability_score": 1.0 if has_process else 0.0,
+        "processability_score": 0.5 if has_process and not _manual_verified(row) else (1.0 if has_process else 0.0),
     }
 
 
@@ -132,6 +208,8 @@ def score_candidates(dataframe: pd.DataFrame, weights_config: Mapping[str, objec
         notes: list[str] = []
         if _as_bool(output.get("needs_manual_review", "")):
             notes.append("manual review required for automatically extracted evidence")
+        if not _pilot_ready(output):
+            notes.append("not pilot-ready without manual verification")
         if missing_fraction:
             notes.append("missing values reduced score")
         output["score_notes"] = "; ".join(notes)
@@ -161,11 +239,40 @@ def write_score_outputs(
     top8_path: str | Path,
 ) -> None:
     safe_scored = report_safe_dataframe(scored)
+    if "pilot_ready" in safe_scored.columns or "manual_verified" in safe_scored.columns:
+        ready_mask = safe_scored.apply(lambda row: _pilot_ready(row.to_dict()), axis=1)
+    else:
+        ready_mask = pd.Series(False, index=safe_scored.index)
+
     ensure_parent(out_csv)
     safe_scored.to_csv(out_csv, index=False)
 
     ensure_parent(top20_path)
     safe_scored.head(20).to_csv(top20_path, index=False)
 
-    ensure_parent(top8_path)
-    safe_scored.head(8).to_csv(top8_path, index=False)
+    top8_path = Path(top8_path)
+    not_ready_path = top8_path.with_name("top8_pilot_screening_NOT_READY.md")
+    ready_candidates = safe_scored.loc[ready_mask].head(8)
+    if len(ready_candidates) >= 8:
+        ensure_parent(top8_path)
+        ready_candidates.to_csv(top8_path, index=False)
+        if not_ready_path.exists():
+            not_ready_path.unlink()
+        return
+
+    if top8_path.exists():
+        top8_path.unlink()
+    ensure_parent(not_ready_path)
+    not_ready_path.write_text(
+        "\n".join(
+            [
+                "# Top 8 Pilot Screening Not Ready",
+                "",
+                f"Only {len(ready_candidates)} candidates are manual_verified=True or pilot_ready=True.",
+                "A pilot-screening recommendation file is not generated from auto-extracted evidence alone.",
+                "Use top20_manual_review.csv for manual curation first.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )

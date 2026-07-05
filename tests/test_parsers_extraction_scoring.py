@@ -97,6 +97,16 @@ def test_candidate_mention_extraction_flags_numeric_values_for_review():
     assert record["needs_manual_review"] is True
 
 
+def test_candidate_mention_extraction_ignores_strain_stopwords():
+    record = extract_mentions_from_text(
+        title="Weissella confusa dextran production",
+        abstract="The strain was productive and the dextran showed branching.",
+        record_id="rec2",
+    )
+
+    assert "strain was" not in record["strain_mentioned"].lower()
+
+
 def test_scoring_handles_missing_values():
     candidates = pd.DataFrame(
         [
@@ -136,11 +146,14 @@ def test_reports_do_not_contain_full_sequences(tmp_path):
     scored = pd.DataFrame(
         [
             {
-                "candidate_id": "cand_0001",
+                "candidate_id": f"cand_{index:04d}",
                 "total_score": 0.9,
                 "sequence": full_sequence,
                 "protein_sequence_available": True,
+                "manual_verified": True,
+                "pilot_ready": True,
             }
+            for index in range(1, 9)
         ]
     )
     out_csv = tmp_path / "scores.csv"

@@ -20,6 +20,7 @@ data/private/
 # Remove the next two lines if you decide to version small processed snapshots.
 data/processed/*.csv
 data/reports/*.csv
+data/reports/*.md
 
 # Protein sequences and raw FASTA exports should be reviewed before sharing.
 *.fasta

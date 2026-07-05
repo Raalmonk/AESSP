@@ -1,0 +1,19 @@
+queries:
+  - name: dextransucrase
+    query: "dextransucrase"
+  - name: glucansucrase
+    query: "glucansucrase"
+  - name: alternansucrase
+    query: "alternansucrase"
+  - name: mutansucrase
+    query: "mutansucrase"
+  - name: reuteransucrase
+    query: "reuteransucrase"
+  - name: gh70_dextransucrase
+    query: "GH70 dextransucrase"
+  - name: leuconostoc_mes_dextransucrase
+    query: "Leuconostoc mesenteroides dextransucrase"
+  - name: weissella_cibaria_glucansucrase
+    query: "Weissella cibaria glucansucrase"
+  - name: weissella_confusa_glucansucrase
+    query: "Weissella confusa glucansucrase"

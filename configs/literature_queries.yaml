@@ -1,0 +1,19 @@
+queries:
+  - name: dextran_producing_strain
+    query: "dextran producing strain"
+  - name: leuconostoc_dextransucrase_mw
+    query: "dextransucrase Leuconostoc mesenteroides dextran molecular weight"
+  - name: glucansucrase_branching
+    query: "glucansucrase dextran branching"
+  - name: weissella_cibaria_mw
+    query: "Weissella cibaria dextran molecular weight"
+  - name: weissella_confusa_branching
+    query: "Weissella confusa dextran branching"
+  - name: nrrl_b512f
+    query: "Leuconostoc mesenteroides NRRL B-512F dextran"
+  - name: dextran_branching_nmr
+    query: "dextran degree of branching NMR"
+  - name: dextran_linkage_nmr
+    query: "alpha-1,3 alpha-1,6 dextran NMR"
+  - name: dextran_mw_viscosity_branching
+    query: "dextran molecular weight distribution viscosity branching"
